@@ -154,21 +154,21 @@ function DashboardContent() {
   };
 
   return (
-    <main className="min-h-screen">
+    <main className="min-h-screen w-full max-w-full overflow-x-hidden">
       <AppNav />
-      <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-9">
-        <section className="rounded-3xl bg-slate-950 px-5 py-6 sm:px-8 sm:py-8 text-white">
+      <div className="mx-auto max-w-6xl w-full min-w-0 px-4 py-6 sm:px-6 sm:py-9">
+        <section className="rounded-3xl bg-slate-950 px-5 py-6 sm:px-8 sm:py-8 text-white w-full min-w-0 overflow-hidden">
           <p className="eyebrow text-indigo-300">Live opportunity feed (Convex DB)</p>
-          <div className="mt-3 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
-            <div>
+          <div className="mt-3 flex flex-col sm:flex-row sm:items-end justify-between gap-4 min-w-0">
+            <div className="min-w-0 flex-1">
               <h1 className="text-2xl sm:text-4xl font-bold tracking-tight">Your Radar is on.</h1>
               <p className="mt-1.5 text-sm sm:text-base text-slate-300">
                 Real-time shortlisted opportunities backed by Firecrawl web search & AI matching.
               </p>
               {profile && (
-                <div className="mt-3 flex items-center gap-2 rounded-xl bg-white/10 px-3 py-1.5 text-xs text-indigo-200 w-fit max-w-full">
+                <div className="mt-3 flex items-center gap-2 rounded-xl bg-white/10 px-3 py-1.5 text-xs text-indigo-200 w-full sm:w-fit max-w-full min-w-0 overflow-hidden">
                   <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
-                  <span className="truncate">
+                  <span className="truncate min-w-0">
                     Tailored for <strong className="text-white">{profile.name || profile.email}</strong> &bull;{" "}
                     {profile.targetRoles?.[0] || profile.bio || "Active Profile"}
                   </span>
@@ -183,28 +183,28 @@ function DashboardContent() {
               {refreshing ? "Searching web..." : "Scan web for matches"}
             </button>
           </div>
-          <div className="mt-6 grid grid-cols-3 divide-x divide-white/10 text-center sm:text-left">
-            <div className="px-2 sm:px-0">
+          <div className="mt-6 grid grid-cols-3 divide-x divide-white/10 text-center sm:text-left w-full min-w-0">
+            <div className="px-2 sm:px-0 min-w-0">
               <p className="text-xl sm:text-3xl font-bold">{allViews.length}</p>
-              <p className="mt-1 text-[11px] sm:text-xs text-slate-400">live matches</p>
+              <p className="mt-1 text-[11px] sm:text-xs text-slate-400 truncate">live matches</p>
             </div>
-            <div className="px-2 sm:pl-5">
+            <div className="px-2 sm:pl-5 min-w-0">
               <p className="text-xl sm:text-3xl font-bold">{savedCount}</p>
-              <p className="mt-1 text-[11px] sm:text-xs text-slate-400">saved in DB</p>
+              <p className="mt-1 text-[11px] sm:text-xs text-slate-400 truncate">saved in DB</p>
             </div>
-            <div className="px-2 sm:pl-5">
+            <div className="px-2 sm:pl-5 min-w-0">
               <p className="text-xl sm:text-3xl font-bold">{deadlineCount}</p>
-              <p className="mt-1 text-[11px] sm:text-xs text-slate-400">closing soon</p>
+              <p className="mt-1 text-[11px] sm:text-xs text-slate-400 truncate">closing soon</p>
             </div>
           </div>
         </section>
 
-        <section className="surface mt-5 p-4 sm:p-5">
-          <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2.5 sm:gap-3">
+        <section className="surface mt-5 p-4 sm:p-5 w-full min-w-0 overflow-hidden">
+          <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2.5 sm:gap-3 w-full min-w-0">
             <select
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              className="field mt-0 w-full sm:w-auto sm:min-w-[180px] flex-1"
+              className="field mt-0 w-full sm:w-auto sm:min-w-[180px] flex-1 min-w-0"
             >
               <option value="">All categories</option>
               {CATEGORIES.map((item) => (
@@ -215,7 +215,7 @@ function DashboardContent() {
             </select>
             <button
               onClick={() => setSavedOnly(!savedOnly)}
-              className={`w-full sm:w-auto rounded-xl border px-4 py-2.5 text-sm font-semibold transition text-center ${
+              className={`w-full sm:w-auto rounded-xl border px-4 py-2.5 text-sm font-semibold transition text-center shrink-0 ${
                 savedOnly
                   ? "border-indigo-200 bg-indigo-50 text-indigo-700"
                   : "border-slate-200 text-slate-600 hover:bg-slate-50"
@@ -226,7 +226,7 @@ function DashboardContent() {
             <button
               onClick={handleEmailDigest}
               disabled={sendingEmail}
-              className="button-secondary w-full sm:w-auto text-center"
+              className="button-secondary w-full sm:w-auto text-center shrink-0"
             >
               {sendingEmail ? "Dispatching..." : "Send email digest"}
             </button>
@@ -234,12 +234,12 @@ function DashboardContent() {
         </section>
 
         {notice && (
-          <div className="mt-3 rounded-xl border border-indigo-100 bg-indigo-50/50 p-3 text-sm text-indigo-900">
+          <div className="mt-3 rounded-xl border border-indigo-100 bg-indigo-50/50 p-3 text-sm text-indigo-900 w-full min-w-0 break-words">
             {notice}
           </div>
         )}
 
-        <section className="mt-7">
+        <section className="mt-7 w-full min-w-0">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-lg font-bold">
               {savedOnly ? "Saved opportunities" : "Best matches"}
@@ -247,14 +247,14 @@ function DashboardContent() {
             <p className="text-sm text-slate-500">{filtered.length} results</p>
           </div>
           {filtered.length === 0 ? (
-            <div className="surface p-10 text-center">
+            <div className="surface p-10 text-center w-full min-w-0">
               <p className="text-lg font-bold">Nothing here yet</p>
               <p className="mt-2 text-sm text-slate-500">
                 Try scanning the web for new opportunities or change your category filter.
               </p>
             </div>
           ) : (
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 w-full min-w-0 max-w-full">
               {filtered.map((match) => (
                 <OpportunityCard key={match.id} opp={match} onSave={onSave} />
               ))}

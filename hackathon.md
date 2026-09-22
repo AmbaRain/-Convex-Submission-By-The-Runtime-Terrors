@@ -12,7 +12,7 @@
 - **Auth:** none
 - **AI models:** gpt-4o-mini
 - **Started:** 2026-09-20T20:17:48Z
-- **Last updated:** 2026-09-22T15:08:46Z
+- **Last updated:** 2026-09-22T15:30:25Z
 
 ## Architecture
 USER → Next.js SPA on Convex Static Hosting (`*.convex.site`) → Convex Cloud (`*.convex.cloud`) → OpenAI (profile understanding & matching) → Firecrawl (Search/Crawl/Extract) → Convex DB → Match+Rank → Dashboard → AgentMail (digests & deadline alerts).
@@ -58,5 +58,8 @@ Connected the Next.js frontend to real-time Convex backend and completed live AP
 ### 2026-09-22 - ecc8297
 Configured Next.js static export (`output: 'export'`) with `generateStaticParams` for dynamic opportunity routes and integrated the official `@convex-dev/static-hosting` component in `convex/convex.config.ts`. Deployed the production backend and uploaded the compiled SPA frontend directly to Convex static hosting at `https://lovable-toucan-817.convex.site`. Added one-command deployment scripts in `package.json` (`deploy:backend`, `deploy:frontend`, `deploy`). Convex features: queries, mutations, actions (`convex/convex.config.ts`, `components/OpportunityDetailClient.tsx`, `app/opportunities/[id]/page.tsx`, `next.config.js`, `package.json`).
 
-### 2026-09-22 - working tree
+### 2026-09-22 - 6e74d19
 Resolved opportunity details navigation on static hosting via `/opportunity?id=...` with Suspense. Upgraded AgentMail digest to fallback to saved and top opportunities when AI match table is initializing, and automatically dispatch opportunity alert emails on save actions. Redesigned frontend UI for full mobile responsiveness including mobile navigation bar in AppNav, line-clamped responsive card titles, and balanced grid button layouts (`app/opportunity/page.tsx`, `components/OpportunityCard.tsx`, `components/OpportunityDetailClient.tsx`, `components/AppNav.tsx`, `app/dashboard/page.tsx`, `convex/integrations/agentmail.ts`).
+
+### 2026-09-22 - working tree
+Enforced strict mobile viewport constraints, eliminating horizontal scroll triggers on mobile screens by adding global overflow clipping (`html, body { overflow-x: hidden; max-width: 100vw }`), setting `w-full min-w-0 max-w-full overflow-hidden` across OpportunityCard, and explicit `grid-cols-1` wrapping on dashboard opportunity grids (`app/globals.css`, `components/OpportunityCard.tsx`, `app/dashboard/page.tsx`).
