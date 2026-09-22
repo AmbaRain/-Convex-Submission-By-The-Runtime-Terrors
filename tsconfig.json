@@ -15,5 +15,5 @@
     "jsx": "preserve",
     "types": ["node"]
   },
-  "include": ["convex"]
+  "include": ["convex", "src/**/*.ts", "scripts/**/*.ts"]
 }
