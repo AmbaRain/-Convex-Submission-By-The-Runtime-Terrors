@@ -51,6 +51,9 @@ export default defineSchema({
     matchScore: v.number(), // 0 to 100
     matchReasons: v.array(v.string()),
     computedAt: v.number(),
+    model: v.string(), // e.g. "gpt-4o-mini"
+    promptVersion: v.string(), // e.g. "1.0.0"
+    sourceFingerprint: v.string(), // fingerprint of profile + opportunity
   })
     .index("by_user", ["userId"])
     .index("by_user_opportunity", ["userId", "opportunityId"])

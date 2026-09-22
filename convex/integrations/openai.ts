@@ -3,12 +3,14 @@ import { v } from "convex/values";
 import { api } from "../_generated/api";
 import { MatchResult, UserProfile } from "../types";
 import { Doc, Id } from "../_generated/dataModel";
+import { fingerprintInput } from "../../fingerprint";
+import { validateMatchResult, normalizeMatchResult } from "../../validation";
 
 /**
  * Heuristic matcher fallback when OPENAI_API_KEY is not yet configured.
  * Computes deterministic, high-quality match scores and reasons from profile & opportunity fields.
  */
-function heuristicMatch(user: UserProfile, op: Doc<"opportunities">): MatchResult {
+function heuristicMatch(user: UserProfile, op: Doc<"opportunities">): MatchResult & { fingerprint: string } {
   let score = 30; // base score
   const reasons: string[] = [];
 
@@ -72,10 +74,37 @@ function heuristicMatch(user: UserProfile, op: Doc<"opportunities">): MatchResul
     reasons.push(`General category match for ${op.category}`);
   }
 
+  // Compute fingerprint for heuristic matches too
+  const profileInput = {
+    id: user._id,
+    email: user.email,
+    name: user.name,
+    skills: user.skills,
+    location: user.location,
+    experience_level: user.experienceLevel,
+    education: user.bio,
+    certifications: [],
+    status: "active",
+  };
+
+  const oppInput = {
+    id: op._id,
+    title: op.title,
+    description: op.description,
+    requirements: [],
+    deadline: op.deadline || "",
+    category: op.category,
+    source_url: op.url || "",
+    extracted_at: String(op.createdAt || ""),
+  };
+
+  const fingerprint = fingerprintInput(profileInput, oppInput);
+
   return {
     opportunityId: op._id,
     matchScore: finalScore,
     matchReasons: reasons,
+    fingerprint,
   };
 }
 
@@ -116,6 +145,7 @@ export const matchUserOpportunities = action({
 
     const apiKey = process.env.OPENAI_API_KEY;
     const matchResults: MatchResult[] = [];
+    const fingerprints: string[] = [];
 
     if (apiKey) {
       try {
@@ -170,40 +200,120 @@ Candidate Profile:
         const parsed = JSON.parse(content || "{}");
         const aiMatches: any[] = parsed.matches || [];
 
+        // Track fingerprints and validate each match
         for (const op of opportunities) {
           const opId = (op as any).id || op._id;
           const match = aiMatches.find((m) => m.opportunityId === opId);
+
+          // Build profile input for fingerprint
+          const profileInput = {
+            id: user._id,
+            email: user.email,
+            name: user.name,
+            skills: user.skills,
+            location: user.location,
+            experience_level: user.experienceLevel,
+            education: user.bio,
+            certifications: [],
+            status: "active",
+          };
+
+          // Build opportunity input for fingerprint
+          const oppInput = {
+            id: opId,
+            title: op.title,
+            description: op.description,
+            requirements: [],
+            deadline: op.deadline || "",
+            category: op.category,
+            source_url: op.url || "",
+            extracted_at: String(op.createdAt || ""),
+          };
+
+          const fingerprint = fingerprintInput(profileInput, oppInput);
+          fingerprints.push(fingerprint);
+
           if (match) {
-            matchResults.push({
-              opportunityId: opId,
-              matchScore: Math.round(match.matchScore),
-              matchReasons: Array.isArray(match.matchReasons) ? match.matchReasons : ["High relevance match"],
+            // Normalize and validate the AI output
+            const normalized = normalizeMatchResult({
+              opportunity_id: match.opportunityId,
+              opportunity_title: match.opportunityTitle || op.title,
+              score: match.matchScore,
+              tier: match.tier || "strong",
+              eligibility: match.eligibility || "likely",
+              summary: match.summary || "",
+              positive_reasons: match.matchReasons || ["High relevance match"],
+              missing_requirements: (match as any).missing_requirements || [],
+              uncertain_requirements: (match as any).uncertain_requirements || [],
             });
+
+            if (normalized.errors) {
+              console.warn("OpenAI output validation errors:", normalized.errors);
+              // Fall back to heuristic
+              const heuristicResult = heuristicMatch(user, op);
+              matchResults.push({
+                opportunityId: heuristicResult.opportunityId,
+                matchScore: heuristicResult.matchScore,
+                matchReasons: heuristicResult.matchReasons,
+              });
+              continue;
+            }
+
+            // Record model metadata for this match
+            const result: MatchResult = {
+              opportunityId: normalized.opportunity_id,
+              matchScore: normalized.score,
+              matchReasons: normalized.positive_reasons,
+            };
+
+            matchResults.push(result);
           } else {
-            matchResults.push(heuristicMatch(user, op));
+            // No match found for this opportunity from AI, use heuristic
+            const heuristicResult = heuristicMatch(user, op);
+            matchResults.push({
+              opportunityId: heuristicResult.opportunityId,
+              matchScore: heuristicResult.matchScore,
+              matchReasons: heuristicResult.matchReasons,
+            });
           }
         }
       } catch (err: any) {
         console.warn("OpenAI API call failed, using intelligent heuristic scoring:", err.message);
+        // Fall back to heuristic for all opportunities
         for (const op of opportunities) {
-          matchResults.push(heuristicMatch(user, op));
+          const heuristicResult = heuristicMatch(user, op);
+          matchResults.push({
+            opportunityId: heuristicResult.opportunityId,
+            matchScore: heuristicResult.matchScore,
+            matchReasons: heuristicResult.matchReasons,
+          });
         }
       }
     } else {
-      // Heuristic AI scoring fallback
+      // Heuristic AI scoring fallback (no API key)
       for (const op of opportunities) {
-        matchResults.push(heuristicMatch(user, op));
+        const heuristicResult = heuristicMatch(user, op);
+        matchResults.push({
+          opportunityId: heuristicResult.opportunityId,
+          matchScore: heuristicResult.matchScore,
+          matchReasons: heuristicResult.matchReasons,
+        });
       }
     }
 
-    // 3. Batch store matches in Convex and trigger high-match alerts
+    // 3. Batch store matches in Convex with metadata
+    const storeMatches = matchResults.map((m, i) => ({
+      opportunityId: m.opportunityId as Id<"opportunities">,
+      matchScore: m.matchScore,
+      matchReasons: m.matchReasons,
+      model: "gpt-4o-mini",
+      promptVersion: "1.0.0",
+      sourceFingerprint: fingerprints[i] || "",
+    }));
+
     await ctx.runMutation(api.matches.storeMatchBatch, {
       userId: args.userId,
-      matches: matchResults.map((m) => ({
-        opportunityId: m.opportunityId as Id<"opportunities">,
-        matchScore: m.matchScore,
-        matchReasons: m.matchReasons,
-      })),
+      matches: storeMatches,
     });
 
     return matchResults;

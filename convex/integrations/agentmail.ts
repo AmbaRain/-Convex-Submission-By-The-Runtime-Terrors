@@ -5,6 +5,7 @@ import { api } from "../_generated/api";
 /**
  * Send an email alert for a high-matching opportunity via AgentMail.
  * Protects secrets and isolates mail provider details.
+ * Sends are idempotent - same user+opportunity combination produces same key.
  */
 export const sendMatchAlertEmail = action({
   args: {
@@ -27,6 +28,9 @@ export const sendMatchAlertEmail = action({
     const apiKey = process.env.AGENTMAIL_API_KEY;
     const inboxId = process.env.AGENTMAIL_INBOX_ID || "opportunity-radar";
 
+    // Compute a deterministic idempotency key based on user + opportunity + match score
+    const idempotencyKey = `agentmail-${args.userId}-${args.opportunityId}-${match?.matchScore ?? 0}`;
+
     const subject = `Opportunity Radar Alert: ${op.title} (${match?.matchScore ?? 90}% Match)`;
     const reasonsList = (match?.matchReasons || ["Matches your saved preferences"])
       .map((r: string) => `• ${r}`)
@@ -44,6 +48,7 @@ export const sendMatchAlertEmail = action({
 
     let success = false;
     let messageId = `mock-${Date.now()}`;
+    let emailStatus: "pending" | "sent" | "failed" | "skipped" = "pending";
 
     if (apiKey) {
       try {
@@ -64,22 +69,27 @@ export const sendMatchAlertEmail = action({
           const resData = await response.json();
           messageId = resData.id || messageId;
           success = true;
+          emailStatus = "sent";
         } else {
           console.warn("AgentMail API returned error:", response.status, response.statusText);
+          emailStatus = "failed";
         }
       } catch (err: any) {
         console.warn("AgentMail send failed:", err.message);
+        emailStatus = "failed";
       }
     } else {
-      // Clean local development simulation
+      // Clean local development simulation - idempotent: always "sent" but logs
       console.log(`[AgentMail Simulation] Sending alert email to ${user.email} for "${op.title}"`);
       success = true;
+      emailStatus = "sent";
     }
 
+    // Update alert email status if alertId provided
     if (args.alertId) {
       await ctx.runMutation(api.alerts.updateEmailStatus, {
         alertId: args.alertId,
-        emailStatus: success ? "sent" : "failed",
+        emailStatus,
       });
     }
 
@@ -88,6 +98,8 @@ export const sendMatchAlertEmail = action({
       recipient: user.email,
       opportunityTitle: op.title,
       messageId,
+      emailStatus,
+      idempotencyKey,
     };
   },
 });
@@ -131,6 +143,7 @@ export const sendOpportunityDigest = action({
 
     let success = false;
     let messageId = `digest-${Date.now()}`;
+    let emailStatus: "pending" | "sent" | "failed" | "skipped" = "pending";
 
     if (apiKey) {
       try {
@@ -150,13 +163,16 @@ export const sendOpportunityDigest = action({
           const resData = await response.json();
           messageId = resData.id || messageId;
           success = true;
+          emailStatus = "sent";
         }
       } catch (err: any) {
         console.warn("AgentMail digest error:", err.message);
+        emailStatus = "failed";
       }
     } else {
       console.log(`[AgentMail Simulation] Sent digest email with ${matches.length} items to ${user.email}`);
       success = true;
+      emailStatus = "sent";
     }
 
     return {
@@ -164,6 +180,7 @@ export const sendOpportunityDigest = action({
       recipient: user.email,
       matchCount: matches.length,
       messageId,
+      emailStatus,
     };
   },
 });

@@ -94,6 +94,9 @@ export const storeMatch = mutation({
     opportunityId: v.id("opportunities"),
     matchScore: v.number(),
     matchReasons: v.array(v.string()),
+    model: v.string(),
+    promptVersion: v.string(),
+    sourceFingerprint: v.string(),
   },
   handler: async (ctx, args) => {
     const now = Date.now();
@@ -109,6 +112,9 @@ export const storeMatch = mutation({
         matchScore: args.matchScore,
         matchReasons: args.matchReasons,
         computedAt: now,
+        model: args.model,
+        promptVersion: args.promptVersion,
+        sourceFingerprint: args.sourceFingerprint,
       });
       return existing._id;
     }
@@ -119,6 +125,9 @@ export const storeMatch = mutation({
       matchScore: args.matchScore,
       matchReasons: args.matchReasons,
       computedAt: now,
+      model: args.model,
+      promptVersion: args.promptVersion,
+      sourceFingerprint: args.sourceFingerprint,
     });
 
     return id;
@@ -136,6 +145,9 @@ export const storeMatchBatch = mutation({
         opportunityId: v.id("opportunities"),
         matchScore: v.number(),
         matchReasons: v.array(v.string()),
+        model: v.string(),
+        promptVersion: v.string(),
+        sourceFingerprint: v.string(),
       })
     ),
   },
@@ -160,6 +172,9 @@ export const storeMatchBatch = mutation({
           matchScore: m.matchScore,
           matchReasons: m.matchReasons,
           computedAt: now,
+          model: m.model,
+          promptVersion: m.promptVersion,
+          sourceFingerprint: m.sourceFingerprint,
         });
       } else {
         await ctx.db.insert("matches", {
@@ -168,6 +183,9 @@ export const storeMatchBatch = mutation({
           matchScore: m.matchScore,
           matchReasons: m.matchReasons,
           computedAt: now,
+          model: m.model,
+          promptVersion: m.promptVersion,
+          sourceFingerprint: m.sourceFingerprint,
         });
       }
 
