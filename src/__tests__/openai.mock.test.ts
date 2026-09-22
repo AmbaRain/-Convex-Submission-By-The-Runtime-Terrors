@@ -89,5 +89,76 @@ describe("Mock OpenAI Provider", () => {
       expect(validTiers).toBe(true)
       expect(validEligibility).toBe(true)
     })
+
+    it("should produce different fingerprints for different opportunities", async () => {
+      const opp2: OpportunityInput = {
+        ...opportunity,
+        title: "Data Scientist Position",
+        description: "Build data pipelines with Python and SQL",
+      }
+      const result1 = await provider.matchProfileToOpportunity(profile, opportunity)
+      const result2 = await provider.matchProfileToOpportunity(profile, opp2)
+      expect(result1.fingerprint).not.toBe(result2.fingerprint)
+    })
+  })
+
+  describe("missing profile fields", () => {
+    it("should default eligibility to uncertain when no skills", async () => {
+      const profileNoSkills: UserProfileInput = {
+        ...profile,
+        skills: [],
+      }
+      const result = await provider.matchProfileToOpportunity(
+        profileNoSkills,
+        opportunity,
+      )
+      expect(result.eligibility).toBe("uncertain")
+    })
+
+    it("should default eligibility to uncertain when no experience level", async () => {
+      const profileNoExperience: UserProfileInput = {
+        ...profile,
+        experience_level: null,
+      }
+      const result = await provider.matchProfileToOpportunity(
+        profileNoExperience,
+        opportunity,
+      )
+      expect(result.eligibility).toBe("uncertain")
+    })
+
+    it("should produce at least one positive reason when profile complete", async () => {
+      const result = await provider.matchProfileToOpportunity(profile, opportunity)
+      expect(result.positive_reasons.length).toBeGreaterThan(0)
+    })
+
+    it("should generate missing requirements when requirements defined", async () => {
+      const result = await provider.matchProfileToOpportunity(profile, opportunity)
+      expect(Array.isArray(result.missing_requirements)).toBe(true)
+      expect(Array.isArray(result.uncertain_requirements)).toBe(true)
+    })
+  })
+
+  describe("changed source fingerprint", () => {
+    it("should produce different score when opportunity changes", async () => {
+      const oppModified: OpportunityInput = {
+        ...opportunity,
+        title: "Modified Opportunity",
+        description: "Different description with different requirements",
+      }
+      const result1 = await provider.matchProfileToOpportunity(profile, opportunity)
+      const result2 = await provider.matchProfileToOpportunity(profile, oppModified)
+      expect(result1.score).not.toBe(result2.score)
+    })
+
+    it("should produce different fingerprint when profile ID changes", async () => {
+      const profile2: UserProfileInput = {
+        ...profile,
+        id: "user-2",
+      }
+      const result1 = await provider.matchProfileToOpportunity(profile, opportunity)
+      const result2 = await provider.matchProfileToOpportunity(profile2, opportunity)
+      expect(result1.fingerprint).not.toBe(result2.fingerprint)
+    })
   })
 })
