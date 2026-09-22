@@ -1,0 +1,21 @@
+{
+  "name": "opportunity-radar-firecrawl",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Firecrawl web intelligence pipeline for Opportunity Radar",
+  "type": "module",
+  "scripts": {
+    "test:firecrawl": "tsx scripts/test-firecrawl.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "dotenv": "^17.2.2",
+    "firecrawl": "^4.5.0",
+    "convex": "^1.17.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.5.0",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.2"
+  }
+}
