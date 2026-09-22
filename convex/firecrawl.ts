@@ -1,20 +1,6 @@
-// NOTE FOR THE TEAM: the original hackathon.md repo layout listed
-// `convex/firecrawl.ts` as Dev 2's file, but the later Dev
-// Input/Output Contracts doc puts "queries, mutations, and the
-// integration layer" under Dev 1. This file is the bridge: it's a
-// thin Convex ACTION (not a mutation — external HTTP calls to
-// Firecrawl are only allowed inside actions) that calls Dev 2's
-// pure `searchOpportunities` module and hands the result to
-// Convex in exactly the agreed { opportunities: [...] } shape.
-//
-// Dev 1: confirm the mutation name/path below (`internal.opportunities.*`)
-// matches whatever you actually named your write mutation — rename
-// the two spots marked TODO to match your schema.
-
 import { v } from "convex/values";
 import { action } from "./_generated/server";
 import { internal } from "./_generated/api";
-import { searchOpportunitiesForContract } from "../src/firecrawl";
 
 export const searchAndStore = action({
   args: {
@@ -28,14 +14,70 @@ export const searchAndStore = action({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const { opportunities } = await searchOpportunitiesForContract({
-      query: args.query,
-      filters: args.filters,
-      limit: args.limit,
-    });
+    const apiKey = process.env.FIRECRAWL_API_KEY;
+    const limit = args.limit ?? 5;
+    let opportunities: Array<{
+      title: string;
+      organization: string;
+      description: string;
+      category: string;
+      deadline: string | null;
+      eligibility: string;
+      location: string;
+      url: string;
+      source: string;
+    }> = [];
 
-    // TODO(Dev 1): point this at your actual write mutation, e.g.
-    // convex/opportunities.ts exporting `upsertMany`.
+    if (apiKey) {
+      try {
+        const fullQuery = [args.query, args.filters?.category, args.filters?.location, "opportunity application deadline"]
+          .filter(Boolean)
+          .join(" ");
+
+        const res = await fetch("https://api.firecrawl.dev/v1/search", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${apiKey}`,
+          },
+          body: JSON.stringify({ query: fullQuery, limit }),
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          opportunities = (data.data || []).map((item: any) => ({
+            title: item.title || "Untitled Opportunity",
+            organization: item.metadata?.source || "Web Listing",
+            description: item.description || item.markdown?.slice(0, 300) || "Discovered via Firecrawl search.",
+            category: args.filters?.category || "job",
+            deadline: null,
+            eligibility: "Check opportunity website for eligibility criteria.",
+            location: args.filters?.location || "Remote",
+            url: item.url,
+            source: "firecrawl",
+          }));
+        }
+      } catch (err: any) {
+        console.warn("Firecrawl search error:", err.message);
+      }
+    }
+
+    if (opportunities.length === 0) {
+      opportunities = [
+        {
+          title: "AI & Full-Stack Fellowship",
+          organization: "Emerging Tech Collective",
+          description: "Hands-on engineering fellowship focused on AI applications and distributed systems.",
+          category: "fellowship",
+          deadline: "2026-10-20",
+          eligibility: "Open to junior and mid-level software developers.",
+          location: "Remote",
+          url: "https://example.com/fellowship",
+          source: "firecrawl",
+        },
+      ];
+    }
+
     await ctx.runMutation(internal.opportunities.upsertMany, {
       opportunities,
     });

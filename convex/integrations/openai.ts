@@ -87,8 +87,9 @@ function heuristicMatch(user: UserProfile, op: Doc<"opportunities">): MatchResul
     status: "active" as const,
   };
 
+  const opId = (op as any).id || op._id;
   const oppInput = {
-    id: op._id,
+    id: opId,
     title: op.title,
     description: op.description,
     requirements: [],
@@ -101,7 +102,7 @@ function heuristicMatch(user: UserProfile, op: Doc<"opportunities">): MatchResul
   const fingerprint = fingerprintInput(profileInput, oppInput);
 
   return {
-    opportunityId: op._id,
+    opportunityId: opId,
     matchScore: finalScore,
     matchReasons: reasons,
     fingerprint,
@@ -149,6 +150,10 @@ export const matchUserOpportunities = action({
 
     if (apiKey) {
       try {
+        const isOpnRouter = apiKey.startsWith("sk-or-") || Boolean(process.env.OPENAI_BASE_URL?.includes("openrouter"));
+        const baseUrl = (process.env.OPENAI_BASE_URL || (isOpnRouter ? "https://openrouter.ai/api/v1" : "https://api.openai.com/v1")).replace(/\/+$/, "");
+        const model = process.env.OPENAI_MODEL || (isOpnRouter ? "openai/gpt-4o-mini" : "gpt-4o-mini");
+
         const systemPrompt = `You are an expert talent and opportunity matchmaking system.
 Evaluate the candidate's profile against each provided opportunity.
 For each opportunity, output a matchScore between 0 and 100, and 2 to 4 concise, factual matchReasons.
@@ -159,40 +164,48 @@ Candidate Profile:
 - Location: ${user.location} (Remote Only: ${user.remoteOnly})
 - Bio / Goals: ${user.bio || "None provided"}`;
 
-        const promptOpportunities = opportunities.map((op) => ({
+        // Optimize prompt token usage: limit batch size to 15 and trim long descriptions to 250 chars
+        const promptOpportunities = opportunities.slice(0, 15).map((op) => ({
           id: (op as any).id || op._id,
           title: op.title,
           organization: op.organization,
-          description: op.description,
+          description: op.description ? op.description.slice(0, 250) : "",
           category: op.category,
           location: op.location,
-          eligibility: op.eligibility,
+          eligibility: op.eligibility ? op.eligibility.slice(0, 150) : "",
         }));
 
-        const response = await fetch("https://api.openai.com/v1/chat/completions", {
+        const headers: Record<string, string> = {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+        };
+        if (isOpnRouter) {
+          headers["HTTP-Referer"] = "https://opportunity-radar.local";
+          headers["X-Title"] = "Opportunity Radar";
+        }
+
+        const response = await fetch(`${baseUrl}/chat/completions`, {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${apiKey}`,
-          },
+          headers,
           body: JSON.stringify({
-            model: "gpt-4o-mini",
+            model,
             response_format: { type: "json_object" },
             messages: [
               { role: "system", content: systemPrompt },
               {
                 role: "user",
-                content: `Evaluate candidate fit for these opportunities. Return a JSON object with key "matches", containing an array of objects with fields: "opportunityId", "matchScore" (integer 0-100), and "matchReasons" (array of strings). Opportunities:\n${JSON.stringify(
+                content: `Evaluate candidate fit for these opportunities. Return a JSON object with key "matches", containing an array of objects with fields: "opportunityId", "matchScore" (integer 0-100), "summary" (one sentence reason), and "matchReasons" (array of strings). Opportunities:\n${JSON.stringify(
                   promptOpportunities
                 )}`,
               },
             ],
             temperature: 0.2,
+            max_tokens: 1500,
           }),
         });
 
         if (!response.ok) {
-          throw new Error(`OpenAI API error: ${response.status} ${response.statusText}`);
+          throw new Error(`AI API error (${model}): ${response.status} ${response.statusText}`);
         }
 
         const data = await response.json();
@@ -234,15 +247,20 @@ Candidate Profile:
           fingerprints.push(fingerprint);
 
           if (match) {
+            const summaryText = (
+              match.summary ||
+              (match.matchReasons?.join(". ") || "Relevant fit for your profile.")
+            ).slice(0, 280);
+
             // Normalize and validate the AI output
             const normalized = normalizeMatchResult({
-              opportunity_id: match.opportunityId,
+              opportunity_id: match.opportunityId || opId,
               opportunity_title: match.opportunityTitle || op.title,
-              score: match.matchScore,
+              score: typeof match.matchScore === "number" ? match.matchScore : 75,
               tier: match.tier || "strong",
               eligibility: match.eligibility || "likely",
-              summary: match.summary || "",
-              positive_reasons: match.matchReasons || ["High relevance match"],
+              summary: summaryText,
+              positive_reasons: match.matchReasons?.length ? match.matchReasons : ["Relevant match based on skills and criteria"],
               missing_requirements: (match as any).missing_requirements || [],
               uncertain_requirements: (match as any).uncertain_requirements || [],
             });

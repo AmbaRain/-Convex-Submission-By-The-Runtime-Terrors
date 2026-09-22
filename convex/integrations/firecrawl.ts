@@ -99,6 +99,7 @@ const CURATED_CRAWL_DATA = [
  */
 export const crawlOpportunities = action({
   args: {
+    url: v.optional(v.string()),
     query: v.optional(v.string()),
     category: v.optional(v.string()),
     limit: v.optional(v.number()),
@@ -112,39 +113,79 @@ export const crawlOpportunities = action({
 
     if (apiKey) {
       try {
-        const response = await fetch("https://api.firecrawl.dev/v1/search", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${apiKey}`,
-          },
-          body: JSON.stringify({
-            query,
-            limit,
-            scrapeOptions: { formats: ["markdown"] },
-          }),
-        });
+        if (args.url) {
+          // Direct URL scrape mode
+          const response = await fetch("https://api.firecrawl.dev/v1/scrape", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${apiKey}`,
+            },
+            body: JSON.stringify({
+              url: args.url,
+              formats: ["markdown"],
+            }),
+          });
 
-        if (!response.ok) {
-          throw new Error(`Firecrawl API error: ${response.status} ${response.statusText}`);
+          if (!response.ok) {
+            throw new Error(`Firecrawl scrape error: ${response.status} ${response.statusText}`);
+          }
+
+          const data = await response.json();
+          const doc = data?.data;
+          if (doc) {
+            discoveredOpportunities = [
+              {
+                title: doc.metadata?.title || `Opportunity at ${args.url}`,
+                organization: doc.metadata?.ogSiteName || "Discovered Listing",
+                description: doc.metadata?.description || doc.markdown?.slice(0, 300) || "Scraped via Firecrawl.",
+                category: args.category ?? "other",
+                deadline: null,
+                eligibility: "Refer to opportunity website for detailed eligibility criteria.",
+                location: "See listing",
+                url: args.url,
+                source: "firecrawl",
+                salary: undefined,
+                tags: ["web-crawl", "firecrawl"],
+              },
+            ];
+          }
+        } else {
+          // Web search crawl mode
+          const response = await fetch("https://api.firecrawl.dev/v1/search", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${apiKey}`,
+            },
+            body: JSON.stringify({
+              query,
+              limit,
+              scrapeOptions: { formats: ["markdown"] },
+            }),
+          });
+
+          if (!response.ok) {
+            throw new Error(`Firecrawl API error: ${response.status} ${response.statusText}`);
+          }
+
+          const data = await response.json();
+          const results = data?.data ?? [];
+
+          discoveredOpportunities = results.map((item: any) => ({
+            title: item.title || `Opportunity from ${item.url}`,
+            organization: item.metadata?.sourceURL || "Web",
+            description: item.description || item.markdown?.slice(0, 300) || "Discovered via Firecrawl search.",
+            category: args.category ?? "other",
+            deadline: null,
+            eligibility: "Refer to opportunity website for detailed eligibility criteria.",
+            location: "See listing",
+            url: item.url,
+            source: "firecrawl",
+            salary: undefined,
+            tags: ["web-crawl", "firecrawl"],
+          }));
         }
-
-        const data = await response.json();
-        const results = data?.data ?? [];
-
-        discoveredOpportunities = results.map((item: any, idx: number) => ({
-          title: item.title || `Opportunity from ${item.url}`,
-          organization: item.metadata?.sourceURL || "Web",
-          description: item.description || item.markdown?.slice(0, 300) || "Discovered via Firecrawl search.",
-          category: args.category ?? "other",
-          deadline: null,
-          eligibility: "Refer to opportunity website for detailed eligibility criteria.",
-          location: "See listing",
-          url: item.url,
-          source: "firecrawl",
-          salary: undefined,
-          tags: ["web-crawl", "firecrawl"],
-        }));
       } catch (err: any) {
         console.warn("Firecrawl live crawl failed, falling back to curated dataset:", err.message);
         discoveredOpportunities = CURATED_CRAWL_DATA;

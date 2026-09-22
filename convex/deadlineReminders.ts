@@ -137,8 +137,8 @@ export const getCandidatesForOneDayReminder = internalQuery({
  * Runs daily via Convex scheduled function
  */
 export const sendSevenDayDeadlineReminder = action({
-  handler: async (ctx) => {
-    const candidates = await ctx.runQuery(
+  handler: async (ctx): Promise<{ success: boolean; processed: number }> => {
+    const candidates: any[] = await ctx.runQuery(
       internal.deadlineReminders.getCandidatesForSevenDayReminder,
       {}
     );
@@ -169,8 +169,8 @@ export const sendSevenDayDeadlineReminder = action({
  * Runs daily via Convex scheduled function
  */
 export const sendOneDayDeadlineReminder = action({
-  handler: async (ctx) => {
-    const candidates = await ctx.runQuery(
+  handler: async (ctx): Promise<{ success: boolean; processed: number }> => {
+    const candidates: any[] = await ctx.runQuery(
       internal.deadlineReminders.getCandidatesForOneDayReminder,
       {}
     );
