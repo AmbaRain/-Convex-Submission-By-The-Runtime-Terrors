@@ -4,7 +4,8 @@ import { ReactNode } from "react";
 import { ConvexProvider, ConvexReactClient } from "convex/react";
 import { SessionProvider } from "./SessionContext";
 
-const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL || "http://127.0.0.1:3210";
+const convexUrl =
+  process.env.NEXT_PUBLIC_CONVEX_URL || "https://lovable-toucan-817.convex.cloud";
 const convex = new ConvexReactClient(convexUrl);
 
 export function ConvexClientProvider({ children }: { children: ReactNode }) {

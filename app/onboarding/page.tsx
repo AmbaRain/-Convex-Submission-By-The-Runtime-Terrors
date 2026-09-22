@@ -80,16 +80,27 @@ export default function OnboardingPage() {
 
       // Persist session in browser
       setSession(newUserId, form.email);
-      setSuccessMsg("Profile saved! Calculating personalized AI matches & dispatching digest...");
+      setSuccessMsg("Profile saved! Redirecting you to your personalized dashboard...");
 
       // Compute AI matches and dispatch digest in background
       matchAction({ userId: newUserId })
         .then(() => digestAction({ userId: newUserId }))
         .catch((e) => console.warn("Background onboarding match/digest error:", e));
 
+      // Transition to dashboard with fallback
       setTimeout(() => {
-        router.push("/dashboard");
-      }, 900);
+        try {
+          router.push("/dashboard");
+        } catch (e) {
+          window.location.href = "/dashboard";
+        }
+        // Safety fallback if SPA router has not switched view after 700ms
+        setTimeout(() => {
+          if (typeof window !== "undefined" && window.location.pathname.includes("onboarding")) {
+            window.location.href = "/dashboard";
+          }
+        }, 700);
+      }, 400);
     } catch (err: any) {
       alert("Failed to save profile: " + err.message);
       setLoading(false);

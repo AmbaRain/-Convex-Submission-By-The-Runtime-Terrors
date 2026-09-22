@@ -61,5 +61,8 @@ Configured Next.js static export (`output: 'export'`) with `generateStaticParams
 ### 2026-09-22 - 6e74d19
 Resolved opportunity details navigation on static hosting via `/opportunity?id=...` with Suspense. Upgraded AgentMail digest to fallback to saved and top opportunities when AI match table is initializing, and automatically dispatch opportunity alert emails on save actions. Redesigned frontend UI for full mobile responsiveness including mobile navigation bar in AppNav, line-clamped responsive card titles, and balanced grid button layouts (`app/opportunity/page.tsx`, `components/OpportunityCard.tsx`, `components/OpportunityDetailClient.tsx`, `components/AppNav.tsx`, `app/dashboard/page.tsx`, `convex/integrations/agentmail.ts`).
 
-### 2026-09-22 - working tree
+### 2026-09-22 - 9c3ceb5
 Enforced strict mobile viewport constraints, eliminating horizontal scroll triggers on mobile screens by adding global overflow clipping (`html, body { overflow-x: hidden; max-width: 100vw }`), setting `w-full min-w-0 max-w-full overflow-hidden` across OpportunityCard, and explicit `grid-cols-1` wrapping on dashboard opportunity grids (`app/globals.css`, `components/OpportunityCard.tsx`, `app/dashboard/page.tsx`).
+
+### 2026-09-22 - working tree
+Fixed clean URL routing (`/dashboard`, `/onboarding`, `/applications`) on Convex Static Hosting by enabling extensionless `.html` candidate lookups in static hosting component `resolveAssetDocument`. Synchronized production Convex backend URL (`https://lovable-toucan-817.convex.cloud`) across client configuration and `.env.local`, resolving Explore Dashboard client transitions and Onboarding profile completion redirects with guaranteed navigation fallback (`components/ConvexClientProvider.tsx`, `app/onboarding/page.tsx`, `app/dashboard/page.tsx`, `hackathon.md`).

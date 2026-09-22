@@ -246,7 +246,13 @@ function DashboardContent() {
             </h2>
             <p className="text-sm text-slate-500">{filtered.length} results</p>
           </div>
-          {filtered.length === 0 ? (
+          {opportunities === undefined ? (
+            <div className="surface p-10 text-center w-full min-w-0">
+              <div className="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent mb-3" />
+              <p className="text-base font-semibold text-slate-700">Connecting to live Convex Radar...</p>
+              <p className="mt-1 text-xs text-slate-400">Loading shortlisted opportunities</p>
+            </div>
+          ) : filtered.length === 0 ? (
             <div className="surface p-10 text-center w-full min-w-0">
               <p className="text-lg font-bold">Nothing here yet</p>
               <p className="mt-2 text-sm text-slate-500">
