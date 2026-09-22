@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import OpportunityDetailClient from "@/components/OpportunityDetailClient";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "@/convex/_generated/api";
@@ -19,5 +20,15 @@ export async function generateStaticParams() {
 }
 
 export default function OpportunityPage({ params }: { params: { id: string } }) {
-  return <OpportunityDetailClient initialId={params.id} />;
+  return (
+    <Suspense
+      fallback={
+        <div className="mx-auto max-w-3xl px-4 py-12 text-slate-500 text-center">
+          Loading opportunity...
+        </div>
+      }
+    >
+      <OpportunityDetailClient initialId={params.id} />
+    </Suspense>
+  );
 }

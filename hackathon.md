@@ -12,7 +12,7 @@
 - **Auth:** none
 - **AI models:** gpt-4o-mini
 - **Started:** 2026-09-20T20:17:48Z
-- **Last updated:** 2026-09-22T14:26:42Z
+- **Last updated:** 2026-09-22T15:08:46Z
 
 ## Architecture
 USER → Next.js SPA on Convex Static Hosting (`*.convex.site`) → Convex Cloud (`*.convex.cloud`) → OpenAI (profile understanding & matching) → Firecrawl (Search/Crawl/Extract) → Convex DB → Match+Rank → Dashboard → AgentMail (digests & deadline alerts).
@@ -21,7 +21,7 @@ USER → Next.js SPA on Convex Static Hosting (`*.convex.site`) → Convex Cloud
 1. Open https://lovable-toucan-817.convex.site, click "Create your radar" to fill out profile on `/onboarding`.
 2. Profile session persists in `localStorage` across reloads and syncs with Convex `api.users.getProfile`.
 3. Dashboard displays AI-ranked opportunities sorted by match score and deadline.
-4. Click "Details" to view opportunity match breakdown and eligibility requirements on dynamic route `/opportunities/[id]`.
+4. Click "Details" to view opportunity match breakdown and eligibility requirements on dynamic route `/opportunity?id=...`.
 5. Save opportunities and track applications with real-time state updates in `/applications`.
 6. Run Rescan for live web scraping with Firecrawl or dispatch digests with AgentMail.
 
@@ -55,5 +55,8 @@ Merged the Next.js frontend into main and unified full-stack build configuration
 ### 2026-09-22 - d77c2bc
 Connected the Next.js frontend to real-time Convex backend and completed live API integrations with Firecrawl, OpenRouter (OpenAI-compatible LLM matching), and AgentMail. Configured `ConvexClientProvider` and `SessionProvider` for browser localStorage synchronization and live profile hydration (`api.users.getProfile`). Wired profile onboarding to `api.users.upsertProfile`, live opportunity listings and AI match rankings to `api.opportunities.list` and `api.matches.getMatchesForUser`, and application tracking to `api.applications.listByUser` and `api.applications.updateStatus`. Implemented web search and direct URL scraping via Firecrawl v1 API, prompt-optimized cost-effective AI candidate evaluation with OpenRouter `openai/gpt-4o-mini`, and live email alert and digest dispatch via AgentMail v0 API with idempotent delivery and HTML templates. Added route transition animations via `template.tsx` with cubic-bezier easing and defensive deadline formatting against invalid time values. Convex features: queries, mutations, actions, internal queries, scheduled actions (`app/*`, `components/*`, `convex/*`).
 
-### 2026-09-22 - be222ba
+### 2026-09-22 - ecc8297
 Configured Next.js static export (`output: 'export'`) with `generateStaticParams` for dynamic opportunity routes and integrated the official `@convex-dev/static-hosting` component in `convex/convex.config.ts`. Deployed the production backend and uploaded the compiled SPA frontend directly to Convex static hosting at `https://lovable-toucan-817.convex.site`. Added one-command deployment scripts in `package.json` (`deploy:backend`, `deploy:frontend`, `deploy`). Convex features: queries, mutations, actions (`convex/convex.config.ts`, `components/OpportunityDetailClient.tsx`, `app/opportunities/[id]/page.tsx`, `next.config.js`, `package.json`).
+
+### 2026-09-22 - working tree
+Resolved opportunity details navigation on static hosting via `/opportunity?id=...` with Suspense. Upgraded AgentMail digest to fallback to saved and top opportunities when AI match table is initializing, and automatically dispatch opportunity alert emails on save actions. Redesigned frontend UI for full mobile responsiveness including mobile navigation bar in AppNav, line-clamped responsive card titles, and balanced grid button layouts (`app/opportunity/page.tsx`, `components/OpportunityCard.tsx`, `components/OpportunityDetailClient.tsx`, `components/AppNav.tsx`, `app/dashboard/page.tsx`, `convex/integrations/agentmail.ts`).

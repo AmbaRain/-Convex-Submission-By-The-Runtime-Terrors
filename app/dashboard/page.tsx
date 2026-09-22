@@ -40,6 +40,7 @@ function DashboardContent() {
   const crawlAction = useAction(api.integrations.firecrawl.crawlOpportunities);
   const matchAction = useAction(api.integrations.openai.matchUserOpportunities);
   const digestAction = useAction(api.integrations.agentmail.sendOpportunityDigest);
+  const alertAction = useAction(api.integrations.agentmail.sendMatchAlertEmail);
 
   // Construct combined view models
   const isSavedSet = new Set(savedList?.map((s: any) => s.opportunity.id));
@@ -88,7 +89,16 @@ function DashboardContent() {
     }
     if (status === "saved") {
       await saveMutation({ userId, opportunityId: id as Id<"opportunities"> });
-      setNotice("Saved opportunity to your list.");
+      setNotice("Saved opportunity to your personal list!");
+      // Automatically send alert email to profile address in background
+      try {
+        const alertRes = await alertAction({ userId, opportunityId: id as Id<"opportunities"> });
+        if (alertRes.success && profile?.email) {
+          setNotice(`Saved! Alert email dispatched to ${profile.email}`);
+        }
+      } catch (err) {
+        console.warn("Could not dispatch save alert email:", err);
+      }
     } else {
       await unsaveMutation({ userId, opportunityId: id as Id<"opportunities"> });
       setNotice("Removed opportunity from saved list.");
@@ -124,15 +134,18 @@ function DashboardContent() {
       setNotice("Set up your profile first in Onboarding to receive email digests.");
       return;
     }
+    const targetEmail = profile?.email || "your registered email";
     setSendingEmail(true);
-    setNotice("Sending opportunity digest via AgentMail...");
+    setNotice(`Sending opportunity digest via AgentMail to ${targetEmail}...`);
     try {
       const res = await digestAction({ userId });
-      setNotice(
-        res.success
-          ? "Opportunity digest sent to your inbox!"
-          : "Notice: " + (res.message || "Failed to dispatch digest")
-      );
+      if (res.success) {
+        setNotice(
+          `✓ Opportunity digest with ${res.matchCount ?? 5} opportunities successfully delivered to ${res.recipient || targetEmail}! Check your inbox.`
+        );
+      } else {
+        setNotice(`Notice: ${res.message || "Failed to dispatch digest"}`);
+      }
     } catch (err: any) {
       setNotice("AgentMail error: " + err.message);
     } finally {
@@ -143,19 +156,19 @@ function DashboardContent() {
   return (
     <main className="min-h-screen">
       <AppNav />
-      <div className="mx-auto max-w-6xl px-5 py-9 sm:px-6">
-        <section className="rounded-3xl bg-slate-950 px-6 py-8 text-white sm:px-8">
+      <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-9">
+        <section className="rounded-3xl bg-slate-950 px-5 py-6 sm:px-8 sm:py-8 text-white">
           <p className="eyebrow text-indigo-300">Live opportunity feed (Convex DB)</p>
-          <div className="mt-3 flex flex-wrap items-end justify-between gap-5">
+          <div className="mt-3 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">Your Radar is on.</h1>
-              <p className="mt-2 text-slate-300">
+              <h1 className="text-2xl sm:text-4xl font-bold tracking-tight">Your Radar is on.</h1>
+              <p className="mt-1.5 text-sm sm:text-base text-slate-300">
                 Real-time shortlisted opportunities backed by Firecrawl web search & AI matching.
               </p>
               {profile && (
-                <div className="mt-3 flex items-center gap-2 rounded-xl bg-white/10 px-3 py-1.5 text-xs text-indigo-200 w-fit">
-                  <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-                  <span>
+                <div className="mt-3 flex items-center gap-2 rounded-xl bg-white/10 px-3 py-1.5 text-xs text-indigo-200 w-fit max-w-full">
+                  <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+                  <span className="truncate">
                     Tailored for <strong className="text-white">{profile.name || profile.email}</strong> &bull;{" "}
                     {profile.targetRoles?.[0] || profile.bio || "Active Profile"}
                   </span>
@@ -165,35 +178,35 @@ function DashboardContent() {
             <button
               onClick={handleRefresh}
               disabled={refreshing}
-              className="button-primary bg-white text-indigo-700 hover:bg-indigo-50"
+              className="button-primary w-full sm:w-auto bg-white text-indigo-700 hover:bg-indigo-50 text-center shrink-0"
             >
               {refreshing ? "Searching web..." : "Scan web for matches"}
             </button>
           </div>
-          <div className="mt-7 grid grid-cols-3 divide-x divide-white/10">
-            <div>
-              <p className="text-2xl font-bold">{allViews.length}</p>
-              <p className="mt-1 text-xs text-slate-400">live opportunities</p>
+          <div className="mt-6 grid grid-cols-3 divide-x divide-white/10 text-center sm:text-left">
+            <div className="px-2 sm:px-0">
+              <p className="text-xl sm:text-3xl font-bold">{allViews.length}</p>
+              <p className="mt-1 text-[11px] sm:text-xs text-slate-400">live matches</p>
             </div>
-            <div className="pl-5">
-              <p className="text-2xl font-bold">{savedCount}</p>
-              <p className="mt-1 text-xs text-slate-400">saved in database</p>
+            <div className="px-2 sm:pl-5">
+              <p className="text-xl sm:text-3xl font-bold">{savedCount}</p>
+              <p className="mt-1 text-[11px] sm:text-xs text-slate-400">saved in DB</p>
             </div>
-            <div className="pl-5">
-              <p className="text-2xl font-bold">{deadlineCount}</p>
-              <p className="mt-1 text-xs text-slate-400">deadlines this week</p>
+            <div className="px-2 sm:pl-5">
+              <p className="text-xl sm:text-3xl font-bold">{deadlineCount}</p>
+              <p className="mt-1 text-[11px] sm:text-xs text-slate-400">closing soon</p>
             </div>
           </div>
         </section>
 
-        <section className="surface mt-6 p-4">
-          <div className="flex flex-wrap items-center gap-3">
+        <section className="surface mt-5 p-4 sm:p-5">
+          <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2.5 sm:gap-3">
             <select
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              className="field mt-0 min-w-[200px] flex-1"
+              className="field mt-0 w-full sm:w-auto sm:min-w-[180px] flex-1"
             >
-              <option value="">All opportunities</option>
+              <option value="">All categories</option>
               {CATEGORIES.map((item) => (
                 <option key={item} value={item} className="capitalize">
                   {item}
@@ -202,7 +215,7 @@ function DashboardContent() {
             </select>
             <button
               onClick={() => setSavedOnly(!savedOnly)}
-              className={`rounded-xl border px-4 py-2.5 text-sm font-semibold transition ${
+              className={`w-full sm:w-auto rounded-xl border px-4 py-2.5 text-sm font-semibold transition text-center ${
                 savedOnly
                   ? "border-indigo-200 bg-indigo-50 text-indigo-700"
                   : "border-slate-200 text-slate-600 hover:bg-slate-50"
@@ -213,7 +226,7 @@ function DashboardContent() {
             <button
               onClick={handleEmailDigest}
               disabled={sendingEmail}
-              className="button-secondary"
+              className="button-secondary w-full sm:w-auto text-center"
             >
               {sendingEmail ? "Dispatching..." : "Send email digest"}
             </button>

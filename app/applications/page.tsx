@@ -75,7 +75,7 @@ export default function ApplicationsPage() {
 
           <div className="mt-4 flex gap-2">
             <Link
-              href={`/opportunities/${item.opportunity.id}`}
+              href={`/opportunity?id=${item.opportunity.id}`}
               className="button-secondary py-2 text-xs"
             >
               Review
@@ -114,9 +114,9 @@ export default function ApplicationsPage() {
   return (
     <main className="min-h-screen pb-16">
       <AppNav />
-      <div className="mx-auto max-w-5xl px-5 py-9 sm:px-6">
+      <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-9">
         <p className="eyebrow">Application tracker</p>
-        <h1 className="mt-2 text-3xl font-bold tracking-tight">Keep momentum on every application.</h1>
+        <h1 className="mt-2 text-2xl sm:text-3xl font-bold tracking-tight">Keep momentum on every application.</h1>
         <p className="mt-2 text-slate-500">
           A real-time Convex-backed view of opportunities you have saved and applied for.
         </p>

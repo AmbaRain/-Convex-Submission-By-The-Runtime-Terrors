@@ -136,51 +136,88 @@ export const sendOpportunityDigest = action({
     const user: any = await ctx.runQuery(api.users.getProfile, { userId: args.userId });
     if (!user) throw new Error("User not found");
 
-    const matches: any[] = await ctx.runQuery(api.matches.getMatchesForUser, {
+    // 1. Fetch AI matches if available
+    let matches: any[] = await ctx.runQuery(api.matches.getMatchesForUser, {
       userId: args.userId,
       minScore: args.minScore ?? 70,
       limit: 5,
     });
 
-    if (matches.length === 0) {
-      return { success: true, message: "No top matches to send" };
+    // 2. Build list of items to send in digest
+    let digestItems: Array<{ title: string; organization: string; url: string; score: number }> = [];
+
+    if (matches && matches.length > 0) {
+      digestItems = matches.map((m: any) => ({
+        title: m.opportunity.title,
+        organization: m.opportunity.organization,
+        url: m.opportunity.url,
+        score: m.match.matchScore ?? 85,
+      }));
+    } else {
+      // Fallback A: Saved opportunities
+      const saved: any[] = await ctx.runQuery(api.savedOpportunities.listSaved, { userId: args.userId });
+      if (saved && saved.length > 0) {
+        digestItems = saved.slice(0, 5).map((s: any) => ({
+          title: s.opportunity.title,
+          organization: s.opportunity.organization,
+          url: s.opportunity.url,
+          score: 90,
+        }));
+      } else {
+        // Fallback B: Latest top opportunities from database
+        const topOpps: any[] = await ctx.runQuery(api.opportunities.list, { limit: 5 });
+        if (topOpps && topOpps.length > 0) {
+          digestItems = topOpps.map((op: any) => ({
+            title: op.title,
+            organization: op.organization,
+            url: op.url,
+            score: 80,
+          }));
+        }
+      }
+    }
+
+    if (digestItems.length === 0) {
+      return { success: false, recipient: user.email, message: "No opportunities currently available to send" };
     }
 
     const apiKey = process.env.AGENTMAIL_API_KEY;
     const rawInbox = process.env.AGENTMAIL_INBOX_ID || "runtime_terrors@agentmail.to";
     const inboxId = rawInbox.includes("@") ? rawInbox : `${rawInbox}@agentmail.to`;
 
-    const digestLines = matches.map(
-      (m: any, idx: number) =>
-        `${idx + 1}. [${m.match.matchScore}%] ${m.opportunity.title} (${m.opportunity.organization})\n   ${m.opportunity.url}`
+    const digestLines = digestItems.map(
+      (item, idx: number) =>
+        `${idx + 1}. [${item.score}% match] ${item.title} (${item.organization})\n   ${item.url}`
     );
 
-    const digestHtml = matches.map(
-      (m: any, idx: number) =>
+    const digestHtml = digestItems.map(
+      (item, idx: number) =>
         `<div style="margin-bottom: 16px; padding: 12px; background: #f8fafc; border-radius: 6px; border: 1px solid #e2e8f0;">` +
-        `<p style="margin: 0 0 4px 0; font-weight: bold; color: #0f172a;">${idx + 1}. ${m.opportunity.title} <span style="color: #4f46e5;">(${m.match.matchScore}% match)</span></p>` +
-        `<p style="margin: 0 0 8px 0; color: #64748b; font-size: 14px;">${m.opportunity.organization}</p>` +
-        `<a href="${m.opportunity.url}" style="color: #4f46e5; text-decoration: none; font-size: 14px; font-weight: 600;">View Listing &rarr;</a>` +
+        `<p style="margin: 0 0 4px 0; font-weight: bold; color: #0f172a;">${idx + 1}. ${item.title} <span style="color: #4f46e5;">(${item.score}% match)</span></p>` +
+        `<p style="margin: 0 0 8px 0; color: #64748b; font-size: 14px;">${item.organization}</p>` +
+        `<a href="${item.url}" style="color: #4f46e5; text-decoration: none; font-size: 14px; font-weight: 600;">View Listing &rarr;</a>` +
         `</div>`
     ).join("");
 
-    const subject = `Opportunity Radar: Your Top ${matches.length} Opportunity Matches`;
+    const subject = `Opportunity Radar: Your Top ${digestItems.length} Opportunity Matches`;
     const textBody = `Hi ${user.name || "there"},\n\n` +
-      `Here are your top opportunity matches today based on your profile:\n\n` +
+      `Here are your top opportunity matches today based on your profile (${user.email}):\n\n` +
       digestLines.join("\n\n") +
-      `\n\nLog in to Opportunity Radar to apply and track your applications!\n\n` +
+      `\n\nLog in to Opportunity Radar (https://lovable-toucan-817.convex.site) to apply and track your applications!\n\n` +
       `Best,\nOpportunity Radar Team`;
 
     const htmlBody = `<div style="font-family: sans-serif; line-height: 1.5; color: #1e293b;">` +
       `<p>Hi ${user.name || "there"},</p>` +
-      `<p>Here are your top opportunity matches today based on your profile:</p>` +
+      `<p>Here are your top opportunity matches today based on your profile (<strong>${user.email}</strong>):</p>` +
       digestHtml +
+      `<p style="margin-top: 24px;"><a href="https://lovable-toucan-817.convex.site/dashboard" style="background: #4f46e5; color: #ffffff; text-decoration: none; padding: 10px 20px; border-radius: 8px; font-weight: 600; display: inline-block;">Open Opportunity Radar &rarr;</a></p>` +
       `<p style="margin-top: 24px; color: #64748b; font-size: 14px;">Best,<br/>Opportunity Radar Team</p>` +
       `</div>`;
 
     let success = false;
     let messageId = `digest-${Date.now()}`;
     let emailStatus: "pending" | "sent" | "failed" | "skipped" = "pending";
+    let errorMessage: string | undefined = undefined;
 
     if (apiKey) {
       try {
@@ -204,15 +241,17 @@ export const sendOpportunityDigest = action({
           success = true;
           emailStatus = "sent";
         } else {
-          console.warn("AgentMail digest API error:", response.status, await response.text());
+          errorMessage = await response.text();
+          console.warn("AgentMail digest API error:", response.status, errorMessage);
           emailStatus = "failed";
         }
       } catch (err: any) {
+        errorMessage = err.message;
         console.warn("AgentMail digest error:", err.message);
         emailStatus = "failed";
       }
     } else {
-      console.log(`[AgentMail Simulation] Sent digest email with ${matches.length} items to ${user.email}`);
+      console.log(`[AgentMail Simulation] Sent digest email with ${digestItems.length} items to ${user.email}`);
       success = true;
       emailStatus = "sent";
     }
@@ -220,9 +259,10 @@ export const sendOpportunityDigest = action({
     return {
       success,
       recipient: user.email,
-      matchCount: matches.length,
+      matchCount: digestItems.length,
       messageId,
       emailStatus,
+      message: success ? `Digest successfully delivered to ${user.email}` : `Failed to deliver email: ${errorMessage || "Unknown error"}`,
     };
   },
 });

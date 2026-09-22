@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { useMutation } from "convex/react";
+import { useMutation, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { CATEGORIES } from "@/lib/types";
 import { useSession } from "@/components/SessionContext";
@@ -11,6 +11,8 @@ import { useSession } from "@/components/SessionContext";
 export default function OnboardingPage() {
   const router = useRouter();
   const upsertProfile = useMutation(api.users.upsertProfile);
+  const matchAction = useAction(api.integrations.openai.matchUserOpportunities);
+  const digestAction = useAction(api.integrations.agentmail.sendOpportunityDigest);
   const { sessionId, sessionEmail, profile, setSession, clearSession } = useSession();
 
   const [loading, setLoading] = useState(false);
@@ -78,11 +80,16 @@ export default function OnboardingPage() {
 
       // Persist session in browser
       setSession(newUserId, form.email);
-      setSuccessMsg("Profile saved and session active! Redirecting to Radar...");
+      setSuccessMsg("Profile saved! Calculating personalized AI matches & dispatching digest...");
+
+      // Compute AI matches and dispatch digest in background
+      matchAction({ userId: newUserId })
+        .then(() => digestAction({ userId: newUserId }))
+        .catch((e) => console.warn("Background onboarding match/digest error:", e));
 
       setTimeout(() => {
         router.push("/dashboard");
-      }, 700);
+      }, 900);
     } catch (err: any) {
       alert("Failed to save profile: " + err.message);
       setLoading(false);
@@ -108,24 +115,24 @@ export default function OnboardingPage() {
 
   return (
     <main className="min-h-screen bg-slate-50 pb-16">
-      <div className="mx-auto max-w-5xl px-5 py-8 sm:px-6">
+      <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
         <Link
           href="/"
           className="inline-flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-indigo-600 transition"
         >
           ← Back to Overview
         </Link>
-        <div className="mt-8 grid gap-10 lg:grid-cols-[.8fr_1.2fr]">
-          <aside className="lg:pt-6">
+        <div className="mt-6 grid gap-8 lg:grid-cols-[.8fr_1.2fr]">
+          <aside className="lg:pt-4">
             <p className="eyebrow">Build your Radar</p>
-            <h1 className="mt-3 text-4xl font-bold tracking-tight text-slate-900">
+            <h1 className="mt-2 text-2xl sm:text-4xl font-bold tracking-tight text-slate-900">
               Let&apos;s find the opportunities meant for you.
             </h1>
-            <p className="mt-4 max-w-sm leading-7 text-slate-600">
+            <p className="mt-3 max-w-sm text-sm sm:text-base leading-6 sm:leading-7 text-slate-600">
               Your profile is stored locally in your browser session and synchronized with Convex for instant real-time opportunity scoring.
             </p>
 
-            <div className="mt-8 space-y-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="mt-6 space-y-3 rounded-xl border border-slate-200 bg-white p-4 sm:p-5 shadow-sm">
               <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Browser Session Info</p>
               <div className="flex items-center gap-2 text-sm text-slate-700">
                 <span className={`h-2.5 w-2.5 rounded-full ${sessionId ? "bg-emerald-500" : "bg-amber-400"}`} />
@@ -144,9 +151,9 @@ export default function OnboardingPage() {
             </div>
           </aside>
 
-          <form onSubmit={submit} className="surface p-6 sm:p-8">
+          <form onSubmit={submit} className="surface p-4 sm:p-8">
             {sessionId && (
-              <div className="mb-6 flex items-center justify-between rounded-xl border border-indigo-100 bg-indigo-50/70 p-4">
+              <div className="mb-6 flex flex-col min-[480px]:flex-row min-[480px]:items-center justify-between gap-3 rounded-xl border border-indigo-100 bg-indigo-50/70 p-3.5 sm:p-4">
                 <div>
                   <div className="flex items-center gap-2">
                     <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
@@ -154,7 +161,7 @@ export default function OnboardingPage() {
                       Saved Profile Loaded
                     </span>
                   </div>
-                  <p className="mt-0.5 text-sm font-semibold text-slate-900">
+                  <p className="mt-0.5 text-sm font-semibold text-slate-900 truncate">
                     {form.name ? `${form.name} (${form.email})` : form.email || "Active User"}
                   </p>
                   <p className="text-xs text-slate-500">Edit fields below to update your Radar at any time.</p>
@@ -162,7 +169,7 @@ export default function OnboardingPage() {
                 <button
                   type="button"
                   onClick={handleResetSession}
-                  className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-600 hover:border-rose-200 hover:text-rose-600 transition"
+                  className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-600 hover:border-rose-200 hover:text-rose-600 transition shrink-0 self-start min-[480px]:self-auto"
                 >
                   New Session
                 </button>
