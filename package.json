@@ -7,9 +7,13 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test": "echo \"No tests configured\""
+    "test": "echo \"No tests configured\"",
+    "deploy:backend": "convex deploy",
+    "deploy:frontend": "next build && npx @convex-dev/static-hosting upload --dist ./out --prod",
+    "deploy": "convex deploy && next build && npx @convex-dev/static-hosting upload --dist ./out --prod"
   },
   "dependencies": {
+    "@convex-dev/static-hosting": "^0.2.1",
     "convex": "^1.46.0",
     "dotenv": "^18.0.2",
     "firecrawl": "^4.41.0",
