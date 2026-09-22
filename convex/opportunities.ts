@@ -247,6 +247,71 @@ export const ingestBatch = mutation({
 });
 
 /**
+ * Upsert many opportunities from Firecrawl or other intelligence feeds.
+ * Bridge for internal.opportunities.upsertMany used by convex/firecrawl.ts.
+ */
+export const upsertMany = internalMutation({
+  args: {
+    opportunities: v.array(
+      v.object({
+        title: v.string(),
+        organization: v.union(v.string(), v.null()),
+        description: v.union(v.string(), v.null()),
+        category: v.union(v.string(), v.null()),
+        deadline: v.union(v.string(), v.null()),
+        eligibility: v.union(v.string(), v.null()),
+        location: v.union(v.string(), v.null()),
+        url: v.string(),
+        source: v.union(v.string(), v.null()),
+      })
+    ),
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+    let ingestedCount = 0;
+    let updatedCount = 0;
+
+    for (const op of args.opportunities) {
+      const existing = await ctx.db
+        .query("opportunities")
+        .withIndex("by_url", (q) => q.eq("url", op.url))
+        .first();
+
+      const normalized = {
+        title: op.title,
+        organization: op.organization || "Various",
+        description: op.description || "Opportunity discovered via web intelligence.",
+        category: op.category || "other",
+        deadline: op.deadline,
+        eligibility: op.eligibility || "See listing for details.",
+        location: op.location || "Remote",
+        url: op.url,
+        source: op.source || "firecrawl",
+        updatedAt: now,
+      };
+
+      if (existing) {
+        await ctx.db.patch(existing._id, normalized);
+        updatedCount++;
+      } else {
+        await ctx.db.insert("opportunities", {
+          ...normalized,
+          createdAt: now,
+        });
+        ingestedCount++;
+      }
+    }
+
+    return {
+      success: true,
+      ingestedCount,
+      updatedCount,
+      total: args.opportunities.length,
+    };
+  },
+});
+
+/**
  * Get distinct categories and opportunity count
  */
 export const getCategories = query({
