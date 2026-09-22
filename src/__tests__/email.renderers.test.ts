@@ -47,7 +47,7 @@ describe("Email Renderers", () => {
   const request: NotificationRequest = {
     user_id: "user-1",
     opportunity_id: "opp-1",
-    match_result,
+    match_result: matchResult,
     kind: "new-match",
   }
 

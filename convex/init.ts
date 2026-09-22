@@ -226,6 +226,9 @@ export const seed = mutation({
           matchScore: m.matchScore,
           matchReasons: m.matchReasons,
           computedAt: now,
+          model: "gpt-4o-mini",
+          promptVersion: "1.0.0",
+          sourceFingerprint: "seed-demo-fingerprint",
         });
       }
     }

@@ -1,7 +1,7 @@
 import type {
   NotificationRequest,
   NotificationResult,
-} from "../../types"
+} from "../types"
 
 export class MockAgentMailProvider {
   private sent: Map<string, NotificationResult> = new Map()

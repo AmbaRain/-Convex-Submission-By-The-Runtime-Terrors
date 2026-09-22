@@ -1,3 +1,8 @@
+import type {
+  NotificationRequest,
+  NotificationResult,
+} from "../types"
+
 export interface AgentMailProvider {
   sendNotification(
     request: NotificationRequest,

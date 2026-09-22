@@ -1,5 +1,9 @@
 import { fingerprintInput } from "../fingerprint"
-import type { MatchResult } from "../../types"
+import type {
+  UserProfileInput,
+  OpportunityInput,
+  MatchResult,
+} from "../types"
 
 export class MockOpenAIProvider {
   private counter = 0
@@ -129,8 +133,8 @@ export class MockOpenAIProvider {
       eligibility,
       summary,
       positive_reasons: positiveReasons.slice(0, 5), // cap at 5
-      missing_requirements,
-      uncertain_requirements,
+      missing_requirements: missingRequirements,
+      uncertain_requirements: uncertainRequirements,
     }
   }
 
@@ -165,7 +169,7 @@ export class MockOpenAIProvider {
   ): boolean {
     // Simplified: check if profile has relevant skill/level
     if (req.type === "skills" && profile.skills) {
-      return profile.skills.some((s) =>
+      return profile.skills.some((s: string) =>
         req.description.toLowerCase().includes(s.toLowerCase()),
       )
     }
@@ -176,7 +180,7 @@ export class MockOpenAIProvider {
       return true // assume met if education is listed
     }
     if (req.type === "certification" && profile.certifications) {
-      return profile.certifications.some((c) => req.description.includes(c))
+      return profile.certifications.some((c: string) => req.description.includes(c))
     }
     if (req.type === "location" && profile.location) {
       return profile.location === req.description

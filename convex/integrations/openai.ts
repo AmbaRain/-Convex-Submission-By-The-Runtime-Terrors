@@ -3,8 +3,8 @@ import { v } from "convex/values";
 import { api } from "../_generated/api";
 import { MatchResult, UserProfile } from "../types";
 import { Doc, Id } from "../_generated/dataModel";
-import { fingerprintInput } from "../../fingerprint";
-import { validateMatchResult, normalizeMatchResult } from "../../validation";
+import { fingerprintInput } from "../../src/fingerprint";
+import { validateMatchResult, normalizeMatchResult } from "../../src/validation";
 
 /**
  * Heuristic matcher fallback when OPENAI_API_KEY is not yet configured.
@@ -76,15 +76,15 @@ function heuristicMatch(user: UserProfile, op: Doc<"opportunities">): MatchResul
 
   // Compute fingerprint for heuristic matches too
   const profileInput = {
-    id: user._id,
+    id: user.id || (user as any)._id || "",
     email: user.email,
-    name: user.name,
+    name: user.name || null,
     skills: user.skills,
     location: user.location,
-    experience_level: user.experienceLevel,
-    education: user.bio,
+    experience_level: (user.experienceLevel || "mid") as any,
+    education: user.bio || null,
     certifications: [],
-    status: "active",
+    status: "active" as const,
   };
 
   const oppInput = {
@@ -93,7 +93,7 @@ function heuristicMatch(user: UserProfile, op: Doc<"opportunities">): MatchResul
     description: op.description,
     requirements: [],
     deadline: op.deadline || "",
-    category: op.category,
+    category: op.category as any,
     source_url: op.url || "",
     extracted_at: String(op.createdAt || ""),
   };
@@ -207,15 +207,15 @@ Candidate Profile:
 
           // Build profile input for fingerprint
           const profileInput = {
-            id: user._id,
+            id: user.id || (user as any)._id || "",
             email: user.email,
-            name: user.name,
+            name: user.name || null,
             skills: user.skills,
             location: user.location,
-            experience_level: user.experienceLevel,
-            education: user.bio,
+            experience_level: (user.experienceLevel || "mid") as any,
+            education: user.bio || null,
             certifications: [],
-            status: "active",
+            status: "active" as const,
           };
 
           // Build opportunity input for fingerprint
@@ -225,7 +225,7 @@ Candidate Profile:
             description: op.description,
             requirements: [],
             deadline: op.deadline || "",
-            category: op.category,
+            category: op.category as any,
             source_url: op.url || "",
             extracted_at: String(op.createdAt || ""),
           };
@@ -247,7 +247,7 @@ Candidate Profile:
               uncertain_requirements: (match as any).uncertain_requirements || [],
             });
 
-            if (normalized.errors) {
+            if ("errors" in normalized) {
               console.warn("OpenAI output validation errors:", normalized.errors);
               // Fall back to heuristic
               const heuristicResult = heuristicMatch(user, op);

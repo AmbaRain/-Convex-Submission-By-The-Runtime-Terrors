@@ -1,3 +1,5 @@
+import type { NotificationRequest, MatchResult } from "../types"
+
 export function renderNewMatchAlert(
   request: NotificationRequest,
   matchResult: MatchResult,
@@ -26,7 +28,7 @@ Match Score: ${score}/100 (${tierDisplay})
 ${summary}
 
 Positive reasons:
-${positive_reasons.map((r) => `- ${r}`).join("\n")}
+${positive_reasons.map((r: string) => `- ${r}`).join("\n")}
 
 View this opportunity in your dashboard.
 
@@ -50,7 +52,7 @@ If you no longer wish to receive these alerts, please update your notification p
   <h3>Positive reasons:</h3>
   <ul>
     ${positive_reasons.map(
-      (r) => `<li style="margin-bottom: 4px;">${r}</li>`,
+      (r: string) => `<li style="margin-bottom: 4px;">${r}</li>`,
     ).join("")}
   </ul>
   
@@ -76,7 +78,8 @@ export function renderSevenDayDeadlineAlert(
   plain: string
   html: string
 } {
-  const { opportunity_title, deadline, summary } = matchResult
+  const { opportunity_title, summary } = matchResult
+  const deadline = (matchResult as any).deadline || new Date(Date.now() + 7 * 86400000).toISOString()
 
   const plain = `
 Seven-Day Deadline Alert
@@ -132,7 +135,8 @@ export function renderOneDayDeadlineAlert(
   plain: string
   html: string
 } {
-  const { opportunity_title, deadline, summary } = matchResult
+  const { opportunity_title, summary } = matchResult
+  const deadline = (matchResult as any).deadline || new Date().toISOString()
 
   const dateStr = new Date(deadline).toLocaleDateString("en-US", {
     month: "short",

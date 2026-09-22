@@ -22,7 +22,7 @@ describe("Match Result Validation", () => {
 
     it("should accept a valid match result via normalizeMatchResult", () => {
       const normalized = normalizeMatchResult(validResult)
-      expect(normalized.errors).toHaveLength(0)
+      expect("errors" in normalized).toBe(false)
     })
   })
 
@@ -30,7 +30,7 @@ describe("Match Result Validation", () => {
     it("should reject a score below 0", () => {
       const invalid = { ...validResult, score: -1 }
       const normalized = normalizeMatchResult(invalid)
-      expect(normalized.errors).toContain(
+      expect((normalized as any).errors).toContain(
         "score must be an integer from 0 to 100",
       )
     })
@@ -38,7 +38,7 @@ describe("Match Result Validation", () => {
     it("should reject a score above 100", () => {
       const invalid = { ...validResult, score: 101 }
       const normalized = normalizeMatchResult(invalid)
-      expect(normalized.errors).toContain(
+      expect((normalized as any).errors).toContain(
         "score must be an integer from 0 to 100",
       )
     })
@@ -46,7 +46,7 @@ describe("Match Result Validation", () => {
     it("should reject a non-integer score", () => {
       const invalid = { ...validResult, score: 85.5 }
       const normalized = normalizeMatchResult(invalid)
-      expect(normalized.errors).toContain(
+      expect((normalized as any).errors).toContain(
         "score must be an integer from 0 to 100",
       )
     })
@@ -54,17 +54,17 @@ describe("Match Result Validation", () => {
 
   describe("invalid tiers", () => {
     it("should reject invalid tier 'excellent'", () => {
-      const invalid = { ...validResult, tier: "excellent" as const }
+      const invalid = { ...validResult, tier: "excellent" as any }
       const normalized = normalizeMatchResult(invalid)
-      expect(normalized.errors).toContain(
+      expect((normalized as any).errors).toContain(
         "tier must be one of: strong, good, possible, low",
       )
     })
 
     it("should reject missing tier", () => {
-      const invalid = { ...validResult, tier: undefined as const }
+      const invalid = { ...validResult, tier: undefined as any }
       const normalized = normalizeMatchResult(invalid)
-      expect(normalized.errors).toContain(
+      expect((normalized as any).errors).toContain(
         "tier must be one of: strong, good, possible, low",
       )
     })
@@ -72,19 +72,33 @@ describe("Match Result Validation", () => {
 
   describe("invalid eligibility", () => {
     it("should reject invalid eligibility 'impossible'", () => {
-      const invalid = { ...validResult, eligibility: "impossible" as const }
+      const invalid = { ...validResult, eligibility: "impossible" as any }
       const normalized = normalizeMatchResult(invalid)
-      expect(normalized.errors).toContain(
+      expect((normalized as any).errors).toContain(
         "eligibility must be one of: likely, uncertain, unlikely",
       )
     })
 
     it("should reject missing eligibility", () => {
-      const invalid = { ...validResult, eligibility: undefined as const }
+      const invalid = { ...validResult, eligibility: undefined as any }
       const normalized = normalizeMatchResult(invalid)
-      expect(normalized.errors).toContain(
+      expect((normalized as any).errors).toContain(
         "eligibility must be one of: likely, uncertain, unlikely",
       )
+    })
+  })
+
+  describe("missing fields", () => {
+    it("should reject missing opportunity_id", () => {
+      const incomplete = { ...validResult, opportunity_id: undefined }
+      const normalized = normalizeMatchResult(incomplete)
+      expect((normalized as any).errors).toContain("missing required field: opportunity_id")
+    })
+
+    it("should reject missing summary", () => {
+      const incomplete = { ...validResult, summary: "" }
+      const normalized = normalizeMatchResult(incomplete)
+      expect((normalized as any).errors).toContain("summary must be a concise string")
     })
   })
 
@@ -92,21 +106,21 @@ describe("Match Result Validation", () => {
     it("should reject empty summary", () => {
       const invalid = { ...validResult, summary: "" }
       const normalized = normalizeMatchResult(invalid)
-      expect(normalized.errors).toContain("summary must be a concise string")
+      expect((normalized as any).errors).toContain("summary must be a concise string")
     })
 
     it("should reject summary too long (>300 chars)", () => {
       const longSummary = "a".repeat(301)
       const invalid = { ...validResult, summary: longSummary }
       const normalized = normalizeMatchResult(invalid)
-      expect(normalized.errors).toContain("summary must be a concise string")
+      expect((normalized as any).errors).toContain("summary must be a concise string")
     })
 
     it("should accept summary at exactly 300 chars", () => {
       const exact300 = "a".repeat(300)
       const valid = { ...validResult, summary: exact300 }
       const normalized = normalizeMatchResult(valid)
-      expect(normalized.errors).toHaveLength(0)
+      expect((normalized as any).errors).toBeUndefined()
     })
   })
 
@@ -114,13 +128,13 @@ describe("Match Result Validation", () => {
     it("should reject non-array positive_reasons", () => {
       const invalid = { ...validResult, positive_reasons: "single reason" }
       const normalized = normalizeMatchResult(invalid)
-      expect(normalized.errors).toContain("positive_reasons must be an array of strings")
+      expect((normalized as any).errors).toContain("positive_reasons must be an array of strings")
     })
 
     it("should reject array with non-string elements", () => {
       const invalid = { ...validResult, positive_reasons: [123] }
       const normalized = normalizeMatchResult(invalid)
-      expect(normalized.errors).toContain("positive_reasons must be an array of strings")
+      expect((normalized as any).errors).toContain("positive_reasons must be an array of strings")
     })
   })
 
@@ -130,7 +144,6 @@ describe("Match Result Validation", () => {
         ...validResult,
         missing_requirements: [{ requirement_type: "skills", missing: true, uncertain: false, reason: "" }],
       }
-      // This tests the internal check - let's be more specific
       const isValid = validateMatchResult(invalid)
       expect(isValid).toBe(false)
     })

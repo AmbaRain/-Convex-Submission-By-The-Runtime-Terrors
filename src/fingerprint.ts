@@ -1,3 +1,5 @@
+import type { UserProfileInput, OpportunityInput } from "./types"
+
 function deterministicHash(input: string): string {
   let hash = 0
   for (let i = 0; i < input.length; i++) {
@@ -26,7 +28,7 @@ export function fingerprintInput(
     opportunity.title,
     opportunity.description,
     opportunity.requirements
-      .map((r) => [r.type, r.description, r.min_level, String(r.required)].filter((x) => x).join("|"))
+      .map((r: any) => [r.type, r.description, r.min_level, String(r.required)].filter((x) => x).join("|"))
       .sort()
       .join("|"),
     opportunity.deadline,

@@ -1,3 +1,5 @@
+import type { MatchResult, MatchGap } from "./types"
+
 export function validateMatchResult(
   result: unknown,
 ): result is MatchResult {
@@ -54,13 +56,15 @@ export function validateMatchResult(
 
   // missing_requirements and uncertain_requirements must be arrays of MatchGap
   const isMatchGap = (item: unknown): item is MatchGap =>
-    item &&
-    typeof item === "object" &&
-    typeof (item as Record<string, unknown>).requirement_id === "string" &&
-    typeof (item as Record<string, unknown>).requirement_type === "string" &&
-    typeof (item as Record<string, unknown>).missing === "boolean" &&
-    typeof (item as Record<string, unknown>).uncertain === "boolean" &&
-    typeof (item as Record<string, unknown>).reason === "string"
+    Boolean(
+      item &&
+      typeof item === "object" &&
+      typeof (item as Record<string, unknown>).requirement_id === "string" &&
+      typeof (item as Record<string, unknown>).requirement_type === "string" &&
+      typeof (item as Record<string, unknown>).missing === "boolean" &&
+      typeof (item as Record<string, unknown>).uncertain === "boolean" &&
+      typeof (item as Record<string, unknown>).reason === "string"
+    )
 
   if (
     !Array.isArray(r.missing_requirements) ||
