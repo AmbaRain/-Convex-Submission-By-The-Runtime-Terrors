@@ -1,0 +1,12 @@
+"use client";
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { AppNav } from "@/components/AppNav";
+import { getOpportunities, setOpportunityStatus } from "@/lib/mock-data";
+import { OpportunityView } from "@/lib/types";
+
+export default function ApplicationsPage() {
+  const [matches, setMatches] = useState<OpportunityView[]>([]); const refresh = () => setMatches(getOpportunities()); useEffect(refresh, []); const saved = matches.filter((match) => match.savedStatus === "saved"); const applied = matches.filter((match) => match.savedStatus === "applied"); const update = (id: string, status: string) => { setOpportunityStatus(id, status); refresh(); };
+  const column = (items: OpportunityView[], type: "saved" | "applied") => <div className="space-y-3">{items.map((item) => <article key={item.id} className="surface p-4"><p className="font-bold">{item.title}</p><p className="mt-1 text-sm text-slate-500">{item.organization}</p><div className="mt-4 flex gap-2"><Link href={`/opportunities/${item.id}`} className="button-secondary py-2 text-xs">Review</Link>{type === "saved" ? <button onClick={() => update(item.id, "applied")} className="button-primary py-2 text-xs">Mark applied</button> : <a href={item.url} target="_blank" rel="noreferrer" className="button-primary py-2 text-xs">Open site</a>}</div></article>)}{items.length === 0 && <p className="surface p-6 text-sm text-slate-500">{type === "saved" ? "Save opportunities from your Radar to keep them here." : "Mark an opportunity as applied to track it here."}</p>}</div>;
+  return <main className="min-h-screen"><AppNav /><div className="mx-auto max-w-5xl px-5 py-9 sm:px-6"><p className="eyebrow">Application tracker</p><h1 className="mt-2 text-3xl font-bold tracking-tight">Keep momentum on every application.</h1><p className="mt-2 text-slate-500">A practical view of opportunities you have saved and applied for.</p><div className="mt-8 grid gap-6 lg:grid-cols-2"><section><div className="mb-3 flex items-center justify-between"><h2 className="font-bold">Ready to apply</h2><span className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-700">{saved.length}</span></div>{column(saved, "saved")}</section><section><div className="mb-3 flex items-center justify-between"><h2 className="font-bold">Applied</h2><span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700">{applied.length}</span></div>{column(applied, "applied")}</section></div></div></main>;
+}
